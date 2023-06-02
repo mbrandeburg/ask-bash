@@ -1,4 +1,4 @@
-# ask-AI Bash Script
+# ask-AI Bash Script (fork)
 
 Simple bash script that helps you with bash commands using the Power of AI
 
@@ -31,7 +31,7 @@ Simple bash script that helps you with bash commands using the Power of AI
    ```bash
     export PATH="$PATH:/path/to/ask"
     export VERBOSE="false"       Disable verbose mode
-    export OPEN_AI_KEY="REPLACE_ME_XXXX"     Specify your OPEN-AI key from https://platform.openai.com/account/api-keys
+    export OPENAIAPI="REPLACE_ME_XXXX"     Specify your OPEN-AI key from https://platform.openai.com/account/api-keys
    ```
 4. Profit
    ```bash

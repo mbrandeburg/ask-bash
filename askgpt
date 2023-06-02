@@ -6,8 +6,9 @@ function echo_help() {
     echo ""
     echo "Options:"
     echo "  -h, --help          Display this help message"
-    echo "  export VERBOSE=false       Disable verbose mode"
-    echo "  export OPEN_AI_KEY=false     Specify the OpenAI API key"
+    echo "  export ASKGPT_VERBOSE=false       Disable verbose mode"
+    echo "  export OPENAIAPI=false     Specify the OpenAI API key"
+    echo "  export ASKGPT_MODEL=false     Specify the model to use (DAVINCI or CHATGPT3.5-TURBO)"
     echo ""
     echo "Description:"
     echo "  This script generates a Bash command using the OpenAI API."
@@ -31,22 +32,30 @@ fi
 # Function to print verbose messages
 function echo_v() {
     local arg="$1"
-    if [[ $VERBOSE != "FALSE" ]]; then
+    if [[ $ASKGPT_VERBOSE != "FALSE" ]]; then
         echo "Verbose turned on"
         echo "$arg"
     fi
 }
 
 # Define your OpenAI API credentials
-API_KEY="$OPEN_AI_KEY"
+API_KEY="$OPENAIAPI"
 
-# Define the endpoint URL for the OpenAI API
-API_ENDPOINT="https://api.openai.com/v1/engines/text-davinci-003/completions"
+# Define the endpoint URL for the OpenAI API: DaVinci vs chatgpt3.5-turbo
+if [[ $ASKGPT_MODEL = "DAVINCI" ]]; then
+    API_ENDPOINT="https://api.openai.com/v1/engines/text-davinci-003/completions"
+elif [[ $ASKGPT_MODEL = "CHATGPT3.5-TURBO" ]]; then
+    API_ENDPOINT="https://api.openai.com/v1/chat/completions"
+else
+    echo "Incorrect model provided. See --help"
+    exit 1
+fi
 
 # Define the prompt for the conversation with the model
 PROMPT="Please generate a Bash command to accomplish the following task: $@ \n"
 
 # Function to send a request to the OpenAI API
+if [[ $ASKGPT_MODEL = "DAVINCI" ]]; then
 function send_request() {
     local input="$1"
     curl -s -X POST \
@@ -55,14 +64,33 @@ function send_request() {
         -d "{\"prompt\": \"$PROMPT\", \"max_tokens\": 50}" \
         "$API_ENDPOINT"
 }
+else
+# ChatGPT3.5 Turbo
+function send_request() {
+    local input="$1"
+    curl -s -X POST \
+        -H "Authorization: Bearer $API_KEY" \
+        -H "Content-Type: application/json" \
+        -d "{\"model\": \"gpt-3.5-turbo\", \"messages\": [{\"role\": \"user\", \"content\": \"$PROMPT\"}], \"temperature\": 0.7 }"\
+        "$API_ENDPOINT" | jq -r '.choices[0].message.content'
+}
+fi
 
 # Send a request to the OpenAI API and store the response
 json=$(send_request)
 
+# Check openAI response
+echo_v "JSON response: $json"
+
 # Extract the command from the JSON response
+if [[ $ASKGPT_MODEL = "DAVINCI" ]]; then
 pattern='.*"text":"\\n([^"]+)"'
-if [[ $json =~ $pattern ]]; then
-  extracted_value="${BASH_REMATCH[1]}"
+    if [[ $json =~ $pattern ]]; then
+    extracted_value="${BASH_REMATCH[1]}"
+    fi
+else
+# ChatGPT3.5 Turbo
+extracted_value="$json" 
 fi
 
 # Print the extracted command
@@ -76,5 +104,5 @@ if [[ $choice != "y" ]]; then
   exit 0
 fi
 
-echo "running command $extracted_value"
+echo -e "running command: $extracted_value\n"
 eval $extracted_value
